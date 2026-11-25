@@ -25,8 +25,9 @@
 //     cap), limited by cash on hand. Sells are sent before buys; a sell's proceeds
 //     land at the next open and never fund a buy in the same reply.
 //   - A bar with zero volume signals nothing; a bar with no volume recorded
-//     (v null) is not held back. Orders cap slippage at 100 bps (1%) past the
-//     close they were decided on. No orders while warming up.
+//     (v null) is not held back. Orders cap slippage at 300 bps (3%) past the
+//     close they were decided on — wide enough that a fast-rising market does
+//     not reject every fill (see MAX_SLIPPAGE_BPS). No orders while warming up.
 //   - Fully deterministic: no clock, no randomness, no network, no environment;
 //     iteration follows the hello symbol order and bar order only.
 
@@ -44,8 +45,14 @@ const TAKE_NUM = 130n;
 const TAKE_DEN = 100n;
 /** Fixed weight per new position, in basis points of equity (15%). */
 const WEIGHT_BPS = 1500n;
-/** Max slippage per order, in bps past the close it was decided on (1%). */
-const MAX_SLIPPAGE_BPS = 100;
+/** Max slippage per order, in bps past the close it was decided on (3%).
+ * The harness rejects a fill whose price (open + impact + 5 bps modelled
+ * slippage) moved past this cap from the decision close, so a 1% cap rejects
+ * every buy in a market rising faster than ~1%/hour — exactly the clean
+ * one-way tail case. Dev hourly open-vs-close moves max out at 129 bps
+ * (p99 67 bps), so 300 bps keeps a real cap while letting fills through in
+ * up to ~3%/hour trends. The cap only decides acceptance, never the price. */
+const MAX_SLIPPAGE_BPS = 300;
 
 /** One EMA: closes collected until it starts, then its value. */
 interface Ema {
